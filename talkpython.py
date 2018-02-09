@@ -59,6 +59,8 @@ def show_hrefs(url):
 
 def mp3_href(base_url, show_href):
     """Finds the href to the mp3 download link for a show page"""
+    print(f'base_url = {base_url}')
+    print(f'show_href = {show_href}')
     response = requests.get(
         base_url.replace('/all', show_href.replace('/episodes', ''))
     )
@@ -68,6 +70,9 @@ def mp3_href(base_url, show_href):
         if 'download mp3' in x.text.lower()
     ]
     href = href[0] if href else ''
+    if href.startswith('/'):
+        href = base_url.replace('/episodes/all', href)
+    print(f'href = {href}')
     return href
 
 
