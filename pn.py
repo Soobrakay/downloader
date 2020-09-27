@@ -5,66 +5,59 @@ download_precision_nutrition
 
 This script will attempt to download the Lean Eating For Men and Lean Eating
 For Women workout PDFs from precisionnutrition.com
-
-The script requires `requests` to function.
-Inside a virtualenv, install with:
-
-```shell
-pip install bs4 requests
-```
-
-Once those are installed, run the script with:
-
-```shell
-python download_precision_nutrition.py
-```
 """
 import multiprocessing
 import os
 
-import requests  # pylint: disable=import-error
+import requests
 
-URL_FMT = 'https://s3.amazonaws.com/static_web_content/forum_shutdown/members/resources/lef{}-2013-phase-{}.pdf'  # noqa pylint: disable=line-too-long
-
-
-def write_pdf(content, name):
-    """Writes pdf `content` to `name` file"""
-    if not content:
-        print('no content for ', name)
-        return
-    with open(name, mode='wb') as pdf_file:
-        pdf_file.write(content)
+#: Formatter to use for building PDF names.
+PDF_FMT = "lef{}-2013-phase-{}.pdf"
+#: Location to the s3 bucket where the PDFs are stored.
+URL = "https://s3.amazonaws.com/static_web_content/forum_shutdown/members/resources"
 
 
 def download(href):
     """Get the content of an mp3 link"""
     response = requests.get(href)
-    return response.content if response.ok else ''
+    return response.content if response.ok else ""
 
 
-def download_if_missing(local_remote):
+def download_if_missing(pdf, url=URL):
     """Downloads a remote file if no local copy exists"""
-    local, remote = local_remote
-    if os.path.exists(local):
-        print('{} already exists'.format(local))
+    if os.path.exists(pdf):
+        print("{} already exists".format(pdf))
         return
-    print('Downloading {} to {}'.format(remote, local))
-    write_pdf(download(remote), local)
-    print('Downloaded {} to {}'.format(remote, local))
+    remote = "/".join([url, pdf])
+    print("Downloading", remote, "to", pdf)
+    content = download(remote)
+    if content:
+        write_pdf(content, pdf)
+        print("Downloaded", remote, "to", pdf)
+    else:
+        print("No content:", name)
+
+
+def pdf_names(formatter=PDF_FMT):
+    """Generator of PDF names"""
+    yield from (
+        formatter.format(gender, phase)
+        for gender in ("m", "w")
+        for phase in range(1, 12)
+    )
+
+
+def write_pdf(content, name):
+    """Writes pdf `content` to `name` file"""
+    with open(name, mode="wb") as pdf_file:
+        pdf_file.write(content)
 
 
 def crawl():
     """Tries to guess the PDF names and download them"""
-    remote_pdfs = [
-        URL_FMT.format(gender, phase)
-        for gender in ('m', 'w')
-        for phase in range(1, 12)
-    ]
-    local_pdfs = (x.split('/')[-1] for x in remote_pdfs)
-    combined = zip(local_pdfs, remote_pdfs)
     pool = multiprocessing.Pool(multiprocessing.cpu_count() * 2)
-    pool.map(download_if_missing, combined)
+    pool.map(download_if_missing, pdf_names())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     crawl()
