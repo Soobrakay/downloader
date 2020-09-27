@@ -1,0 +1,11 @@
+# requirements for the module itself
+beautifulsoup4
+more-itertools
+requests
+
+# requirements for vscode-reStructuredText plugin
+doc8
+docutils
+rstcheck
+sphinx
+sphinx-autobuild
