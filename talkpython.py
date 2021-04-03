@@ -6,6 +6,7 @@ talkpython
 This script will crawl and download all podcast MP3s for TalkPython.fm.
 """
 import functools
+import logging
 import multiprocessing
 import os
 import re
@@ -55,12 +56,14 @@ def show_hrefs(url):
 
 def mp3_href(base_url, show_href):
     """Finds the href to the mp3 download link for a show page"""
+    print('Looking for mp3:', show_href)
     response = requests.get(
         base_url.replace("/all", show_href.replace("/episodes", ""))
     )
     soup = bs(response.text, "html.parser")
     links = (anchor.get("href") for anchor in soup.find_all("a"))
     href = first_true(links, default="", pred=ends_in_mp3)
+    print('Found mp3:', href)
     if href.startswith("/"):
         href = base_url.replace("/episodes/all", href)
     return href
