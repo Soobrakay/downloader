@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
 setup(
     name="downloader",
@@ -9,9 +9,10 @@ setup(
     author="soobrakay",
     author_email="Soobrakay@users.noreply.github.com",
     license="MIT",
-    py_modules=["pn", "talkpython"],
-    install_requires=["beautifulsoup4", "more-itertools", "requests"],
-    entry_points=dict(console_scripts=["pn=pn:crawl", "talkpython=talkpython:crawl"]),
+    packages=find_packages('src'),
+    package_dir={"": "src"},
+    install_requires=["beautifulsoup4", "click", "more-itertools", "requests"],
+    entry_points=dict(console_scripts=["downloader=downloader:cli"]),
     include_package_data=True,
     zip_safe=False,
 )
