@@ -9,7 +9,6 @@ import functools
 import multiprocessing
 import os
 import re
-import sys
 
 import click
 import requests
@@ -56,14 +55,14 @@ def show_hrefs(url):
 
 def mp3_href(base_url, show_href):
     """Finds the href to the mp3 download link for a show page"""
-    click.echo(f'Looking for mp3: {show_href}')
+    click.echo(f"Looking for mp3: {show_href}")
     response = requests.get(
         base_url.replace("/all", show_href.replace("/episodes", ""))
     )
     soup = bs(response.text, "html.parser")
     links = (anchor.get("href") for anchor in soup.find_all("a"))
     href = first_true(links, default="", pred=ends_in_mp3)
-    click.echo(f'Found mp3: {href}')
+    click.echo(f"Found mp3: {href}")
     if href.startswith("/"):
         href = base_url.replace("/episodes/all", href)
     return href
@@ -81,8 +80,12 @@ def download_if_missing(local_remote):
 
 
 @click.command()
-@click.option('-u', '--url', default='https://talkpython.fm/episodes/all',
-              help="URL to the episodes list page")
+@click.option(
+    "-u",
+    "--url",
+    default="https://talkpython.fm/episodes/all",
+    help="URL to the episodes list page",
+)
 def podcast(url):
     """Finds all the show pages and downloads any missing mp3s"""
 
