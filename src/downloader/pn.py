@@ -6,6 +6,7 @@ download_precision_nutrition
 This script will attempt to download the Lean Eating For Men and Lean Eating
 For Women workout PDFs from precisionnutrition.com
 """
+import click
 import multiprocessing
 import os
 
@@ -26,16 +27,16 @@ def download(href):
 def download_if_missing(pdf, url=URL):
     """Downloads a remote file if no local copy exists"""
     if os.path.exists(pdf):
-        print("{} already exists".format(pdf))
+        click.echo(f"{pdf} already exists")
         return
     remote = "/".join([url, pdf])
-    print("Downloading", remote, "to", pdf)
+    click.echo(f"Downloading {remote} to {pdf}")
     content = download(remote)
     if content:
         write_pdf(content, pdf)
-        print("Downloaded", remote, "to", pdf)
+        click.echo(f"Downloaded {remote} to {pdf}")
     else:
-        print("No content:", remote)
+        click.echo(f"No content: {remote}")
 
 
 def pdf_names(formatter=PDF_FMT):
@@ -53,11 +54,8 @@ def write_pdf(content, name):
         pdf_file.write(content)
 
 
-def crawl():
+@click.command()
+def precision_nutrition():
     """Tries to guess the PDF names and download them"""
     pool = multiprocessing.Pool(multiprocessing.cpu_count() * 2)
     pool.map(download_if_missing, pdf_names())
-
-
-if __name__ == "__main__":
-    crawl()

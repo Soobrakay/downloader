@@ -1,4 +1,5 @@
 # requirements for the module itself
 beautifulsoup4
+click
 more-itertools
 requests
