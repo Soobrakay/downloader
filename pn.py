@@ -35,7 +35,7 @@ def download_if_missing(pdf, url=URL):
         write_pdf(content, pdf)
         print("Downloaded", remote, "to", pdf)
     else:
-        print("No content:", name)
+        print("No content:", remote)
 
 
 def pdf_names(formatter=PDF_FMT):
