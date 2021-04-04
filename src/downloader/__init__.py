@@ -1,3 +1,9 @@
+"""
+downloader
+==========
+
+Creates the command line interface for downloading workouts or podcasts.
+"""
 import click
 
 from .pn import precision_nutrition
