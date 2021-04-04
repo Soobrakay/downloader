@@ -7,7 +7,7 @@ Nutrition or MP3 files of TalkPython.fm or PythonBytes.fm podcasts.
 Installation
 ------------
 
-Clone the repository, build the distribution, and pipx install.
+Clone the repository, build the distribution, and [pipx][pipx] install.
 
 ```shell
 git clone https://github.com/soobrakay/downloader.git
@@ -26,3 +26,21 @@ downloader --help
 downloader precision-nutrition --help
 downloader podcast --help
 ```
+
+### Downloading TalkPython.fm
+
+```shell
+mkdir talkpython.fm
+cd talkpython.fm
+downloader podcast
+```
+
+### Downloading PythonBytes.fm
+
+```shell
+mkdir pythonbytes.fm
+cd pythonbytes.fm
+downloader pocast --url https://pythonbytes.fm/episodes/all
+```
+
+[pipx]: https://pypi.org/project/pipx/
