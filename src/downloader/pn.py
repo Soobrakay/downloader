@@ -1,16 +1,15 @@
-#!/usr/bin/env python3
 """
-download_precision_nutrition
-============================
+pn
+==
 
 This script will attempt to download the Lean Eating For Men and Lean Eating
 For Women workout PDFs from precisionnutrition.com
 """
 import click
 import multiprocessing
-import os
+import typing
 
-import requests
+from . import common
 
 #: Formatter to use for building PDF names.
 PDF_FMT = "lef{}-2013-phase-{}.pdf"
@@ -18,29 +17,14 @@ PDF_FMT = "lef{}-2013-phase-{}.pdf"
 URL = "https://s3.amazonaws.com/static_web_content/forum_shutdown/members/resources"
 
 
-def download(href):
-    """Get the content of an mp3 link"""
-    response = requests.get(href)
-    return response.content if response.ok else ""
+def pdf_names(formatter: str = PDF_FMT) -> typing.Iterator[str]:
+    """Generates all the valid PDF names for Precision Nutrition 2013 workouts.
 
-
-def download_if_missing(pdf, url=URL):
-    """Downloads a remote file if no local copy exists"""
-    if os.path.exists(pdf):
-        click.echo(f"{pdf} already exists")
-        return
-    remote = "/".join([url, pdf])
-    click.echo(f"Downloading {remote} to {pdf}")
-    content = download(remote)
-    if content:
-        write_pdf(content, pdf)
-        click.echo(f"Downloaded {remote} to {pdf}")
-    else:
-        click.echo(f"No content: {remote}")
-
-
-def pdf_names(formatter=PDF_FMT):
-    """Generator of PDF names"""
+    :param formatter: a format string with 2 parameters.
+        The first parameter is for gender (m or w).
+        The second parameter is for phase (1-12).
+    :returns: Generator for all the PDF names for men and women for all 12 phases.
+    """
     yield from (
         formatter.format(gender, phase)
         for gender in ("m", "w")
@@ -48,14 +32,32 @@ def pdf_names(formatter=PDF_FMT):
     )
 
 
-def write_pdf(content, name):
-    """Writes pdf `content` to `name` file"""
-    with open(name, mode="wb") as pdf_file:
-        pdf_file.write(content)
+def local_remotify(pdf_name: str, url: str = URL) -> typing.Tuple[str, str]:
+    """Create a tuple of local, remote from a PDF name and URL.
+
+    :param pdf_name: Name of the PDF file to download or local copy name.
+    :param url: Remote URL to combine with ``pdf_name`` for remote path.
+    :returns: tuple of (local, remote).
+        ``local`` is the name of the file on the local system.
+        ``remote`` is the URL to the file to download if missing locally.
+    """
+    return pdf_name, "/".join([url, pdf_name])
 
 
 @click.command()
 def precision_nutrition():
-    """Tries to guess the PDF names and download them"""
+    """Downloads 24 PDFs from Precision Nutrition to the current directory.
+
+    12 PDFs are for designed for men. 12 PDFs are designed for women. The PDFs
+    cover 4-6 week periods as phases of the program. Phases are meant to be
+    executed in order with later phases containing much harder workouts than
+    earlier phases.
+
+    The workouts are designed for specific genders. The major differences
+    are the men's workouts are typically 4 strength training days based on an
+    upper/lower split and 1 interval day while the women's workouts are 3
+    strength training days using an A/B full body workout cycle and 2 interval
+    days.
+    """
     pool = multiprocessing.Pool(multiprocessing.cpu_count() * 2)
-    pool.map(download_if_missing, pdf_names())
+    pool.map(common.download_if_missing, map(local_remotify, pdf_names()))
