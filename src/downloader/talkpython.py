@@ -1,82 +1,86 @@
-#!/usr/bin/env python3
 """
 talkpython
 ==========
 
-This script will crawl and download all podcast MP3s for TalkPython.fm.
+This script attempts to find all MP3 links to podcast episodes for
+TalkPython.fm or PythonBytes.fm and download any MP3s not available in the
+current working directory
 """
 import functools
 import multiprocessing
-import os
 import re
+import typing
 
 import click
 import requests
-from bs4 import BeautifulSoup as bs
+from bs4 import BeautifulSoup
 from more_itertools import first_true
+
+from . import common
 
 #: Regex to find the name of the .mp3 file to download.
 MP3_MATCHER = re.compile(r"/([^/]*.mp3)", re.IGNORECASE)
 
 
-def is_show_href(href):
-    """Returns True for links with hrefs to show pages"""
+def is_show_href(href: str) -> bool:
+    """Returns True for links with hrefs to show pages
+
+    :param href: The href attribute from an anchor tag on the episodes page.
+    :returns: True if it looks like a show tag, False otherwise.
+    """
     return href and "/episodes/show/" in href.lower()
 
 
-def ends_in_mp3(href):
-    return href and href.endswith(".mp3")
+def ends_in_mp3(href: str) -> bool:
+    """True if the link ends in .mp3
+
+    :param href: The href attribute from an anchor tag on a show page.
+    :returns: True if it ends in .mp3, False otherwise.
+    """
+    return href and href.lower().endswith(".mp3")
 
 
-def write_mp3(content, name):
-    """Writes MP3 `content` to `name` file"""
-    with open(name, mode="wb") as mp3_file:
-        mp3_file.write(content)
+def mp3_name(
+    href: str,
+    fn: typing.Callable[[str], typing.Optional[typing.Match]] = MP3_MATCHER.search,
+) -> str:
+    """MP3 filename from a link or empty string if no filename found.
+
+    :param href: HREF attribute from an anchor tag on a show page.
+    :param fn: Test function to find the MP3. Should return re.Match or None
+    :returns: MP3 filename or empty string if no filename found.
+    """
+    match = fn(href)
+    return match.groups()[0] if match else ""
 
 
-def download(href):
-    """Get the content of an mp3 link"""
-    response = requests.get(href)
-    return response.content if response.ok else ""
+def show_hrefs(url: str) -> typing.Iterable[str]:
+    """Find all the URLs to episode show pages from the episodes list page.
 
-
-def mp3_name(href, test=MP3_MATCHER.search):
-    """Returns the mp3 file name from the link href"""
-    result = test(href)
-    return result.groups()[0] if result else ""
-
-
-def show_hrefs(url):
-    """Gets all the hrefs to the show pages"""
+    :param url: URL to the episodes list page to scan.
+    :returns: URLs tot he show pages.
+    """
     response = requests.get(url)
-    soup = bs(response.text, "html.parser")
-    return (x.get("href") for x in soup.find_all(href=is_show_href))
+    soup = BeautifulSoup(response.text, "html.parser")
+    return map(lambda anchor: anchor.get('href'), soup.find_all(href=is_show_href))
 
 
-def mp3_href(base_url, show_href):
-    """Finds the href to the mp3 download link for a show page"""
+def mp3_href(base_url: str, show_href: str) -> str:
+    """Finds the href to the mp3 download link for a show page.
+
+    :param base_url: URL to the episodes list page.
+    :param show_href: Relative URL to the show page.
+    :returns: URL to the MP3 file
+    """
+    root_url = base_url.replace('/episodes/all', '')
     click.echo(f"Looking for mp3: {show_href}")
-    response = requests.get(
-        base_url.replace("/all", show_href.replace("/episodes", ""))
-    )
-    soup = bs(response.text, "html.parser")
+    response = requests.get(''.join([root_url, show_href]))
+    soup = BeautifulSoup(response.text, "html.parser")
     links = (anchor.get("href") for anchor in soup.find_all("a"))
     href = first_true(links, default="", pred=ends_in_mp3)
     click.echo(f"Found mp3: {href}")
-    if href.startswith("/"):
-        href = base_url.replace("/episodes/all", href)
+    href = ''.join([root_url, href]) if href.startswith('/') else href
     return href
-
-
-def download_if_missing(local_remote):
-    """Downloads a remote file if no local copy exists"""
-    local, remote = local_remote
-    if os.path.exists(local):
-        click.echo(f"{local} already exists")
-        return
-    click.echo(f"Downloading {remote} to {local}")
-    write_mp3(download(remote), local)
-    click.echo(f"Downloaded {remote} to {local}")
 
 
 @click.command()
@@ -87,15 +91,22 @@ def download_if_missing(local_remote):
     help="URL to the episodes list page",
 )
 def podcast(url):
-    """Finds all the show pages and downloads any missing mp3s"""
+    """Downloads MP3s from TalkPython.fm or PythonBytes.fm to current directory.
+
+    Default URL is https://talkpython.fm/episodes/all and will download all
+    episode MP3s to the current directory.
+
+    Use ``--url https://pythonbytes.fm/episodes/all`` to download all episode
+    MP3s from PythonBytes.fm instead.
+    """
 
     pool = multiprocessing.Pool(multiprocessing.cpu_count() * 2)
 
-    url_finder = functools.partial(mp3_href, url)
-
     shows = show_hrefs(url)
+
+    url_finder = functools.partial(mp3_href, url)
     remote_mp3s = pool.map(url_finder, shows)
 
     local_mp3s = (mp3_name(remote) for remote in remote_mp3s)
     combined = zip(local_mp3s, remote_mp3s)
-    pool.map(download_if_missing, combined)
+    pool.map(common.download_if_missing, combined)
